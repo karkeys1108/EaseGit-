@@ -241,12 +241,16 @@ const Dashboard = () => {
         });
         
         const commitsData = commitsResponse.data;
+        console.log('Commits API response:', commitsData);
+        
+        // Initialize with empty array
+        let processedCommits = [];
         
         if (commitsData) {
           // Handle new response format with totalCount
           if (commitsData.commits && Array.isArray(commitsData.commits)) {
             console.log(`Fetched ${commitsData.commits.length} recent commits out of ${commitsData.totalCount} total commits`);
-            setRecentCommits(commitsData.commits);
+            processedCommits = commitsData.commits;
             
             // Update stats with total commit count
             setStats(prevStats => ({
@@ -257,7 +261,7 @@ const Dashboard = () => {
           // Handle old response format (direct array)
           else if (Array.isArray(commitsData)) {
             console.log(`Fetched ${commitsData.length} commits (old format)`);
-            setRecentCommits(commitsData);
+            processedCommits = commitsData;
             
             // Update stats with commit count from array
             setStats(prevStats => ({
@@ -267,8 +271,8 @@ const Dashboard = () => {
           }
           else {
             // No valid commits data
-            console.log('No valid commits data found');
-            setRecentCommits([]);
+            console.log('No valid commits data found, data type:', typeof commitsData);
+            processedCommits = [];
             
             // Update stats with zero commits
             setStats(prevStats => ({
@@ -279,7 +283,7 @@ const Dashboard = () => {
         } else {
           // Use empty array if no commits found
           console.log('No commits data found');
-          setRecentCommits([]);
+          processedCommits = [];
           
           // Update stats with zero commits
           setStats(prevStats => ({
@@ -287,6 +291,49 @@ const Dashboard = () => {
             totalCommits: 0
           }));
         }
+        
+        // Ensure we're setting a valid array
+        if (!Array.isArray(processedCommits)) {
+          console.warn('Processed commits is not an array, setting to empty array');
+          processedCommits = [];
+        }
+        
+        // Add mock data if in development and no commits found
+        if (processedCommits.length === 0 && process.env.NODE_ENV === 'development') {
+          console.log('Adding mock commit data for development');
+          processedCommits = [
+            {
+              sha: 'mock1',
+              commit: {
+                message: 'Fix dashboard layout issues',
+                author: {
+                  name: 'Developer',
+                  date: new Date().toISOString()
+                }
+              },
+              author: {
+                login: 'dev1'
+              }
+            },
+            {
+              sha: 'mock2',
+              commit: {
+                message: 'Add new features to repository page',
+                author: {
+                  name: 'Developer',
+                  date: new Date(Date.now() - 86400000).toISOString()
+                }
+              },
+              author: {
+                login: 'dev2'
+              }
+            }
+          ];
+        }
+        
+        console.log('Setting recent commits:', processedCommits);
+        setRecentCommits(processedCommits);
+        
       } catch (error) {
         console.warn('Error fetching commit data:', error);
         setRecentCommits([]);
@@ -422,47 +469,120 @@ const Dashboard = () => {
     >
       {/* Profile and Stats */}
       <div className="grid grid-cols-1 gap-6 mb-6">
-        {/* Profile Card - Compact Version */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 border border-gray-100 dark:border-gray-700">
-          <div className="flex items-center">
-            <img 
-              src={user?.avatar_url || 'https://via.placeholder.com/100'} 
-              alt="Profile" 
-              className="w-16 h-16 rounded-full mr-4"
-            />
-            <div className="flex-1">
+        {/* Professional Profile Card */}
+        <div className="relative overflow-hidden bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700">
+          {/* Premium gradient header */}
+          <div className="h-24 bg-gradient-to-r from-emerald-500 to-blue-500 relative overflow-hidden">
+            {/* Animated gradient overlay */}
+            <div className="absolute inset-0 bg-gradient-to-r from-teal-500/30 via-cyan-500/30 to-blue-500/30 animate-gradient-x"></div>
+            
+            {/* Decorative elements */}
+            <div className="absolute top-0 left-0 w-full h-full overflow-hidden opacity-20">
+              <div className="absolute top-0 left-5 w-16 h-16 rounded-full bg-white/20 blur-xl"></div>
+              <div className="absolute bottom-5 right-10 w-12 h-12 rounded-full bg-blue-300/30 blur-xl"></div>
+            </div>
+          </div>
+          
+          <div className="px-6 pb-6 pt-14 relative">
+            {/* Avatar */}
+            <div className="absolute left-6 -top-10">
+              <div className="relative">
+                {/* Glow effect */}
+                <div className="absolute inset-0 rounded-full bg-gradient-to-r from-emerald-500 to-blue-500 blur-md opacity-70 scale-110"></div>
+                
+                {/* Avatar image */}
+                <div className="relative w-20 h-20 rounded-full border-4 border-white dark:border-gray-800 shadow-lg overflow-hidden z-10">
+                  <img 
+                    src={user?.avatar_url || 'https://via.placeholder.com/100'} 
+                    alt="Profile" 
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                
+                {/* Status indicator */}
+                <div className="absolute bottom-0 right-0 z-20 bg-green-500 w-4 h-4 rounded-full border-2 border-white dark:border-gray-800"></div>
+              </div>
+            </div>
+            
+            <div className="ml-24">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-xl font-bold text-gray-900 dark:text-white">{user?.name || 'GitHub User'}</h2>
+                  <div className="flex items-center">
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">{user?.name || 'GitHub User'}</h2>
+                    <div className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                      </svg>
+                      Verified
+                    </div>
+                  </div>
                   <p className="text-sm text-gray-600 dark:text-gray-400">@{user?.login || 'username'}</p>
                 </div>
+                
+                {/* Social links - modern style */}
                 <div className="flex space-x-2">
                   {user?.blog && (
-                    <a href={user.blog} target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-blue-500 dark:text-gray-400 dark:hover:text-blue-400">
-                      <Globe size={18} />
+                    <a 
+                      href={user.blog} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gradient-to-br hover:from-blue-500 hover:to-purple-600 hover:text-white transition-all duration-300"
+                      title="Website"
+                    >
+                      <Globe size={16} />
                     </a>
                   )}
                   {user?.email && (
-                    <a href={`mailto:${user.email}`} className="text-gray-500 hover:text-blue-500 dark:text-gray-400 dark:hover:text-blue-400">
-                      <Mail size={18} />
+                    <a 
+                      href={`mailto:${user.email}`} 
+                      className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gradient-to-br hover:from-blue-500 hover:to-purple-600 hover:text-white transition-all duration-300"
+                      title="Email"
+                    >
+                      <Mail size={16} />
                     </a>
                   )}
                   {user?.twitter_username && (
-                    <a href={`https://twitter.com/${user.twitter_username}`} target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-blue-500 dark:text-gray-400 dark:hover:text-blue-400">
-                      <Twitter size={18} />
+                    <a 
+                      href={`https://twitter.com/${user.twitter_username}`} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gradient-to-br hover:from-blue-500 hover:to-purple-600 hover:text-white transition-all duration-300"
+                      title="Twitter"
+                    >
+                      <Twitter size={16} />
                     </a>
                   )}
                   {user?.html_url && (
-                    <a href={user.html_url} target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-blue-500 dark:text-gray-400 dark:hover:text-blue-400">
-                      <Github size={18} />
+                    <a 
+                      href={user.html_url} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gradient-to-br hover:from-blue-500 hover:to-purple-600 hover:text-white transition-all duration-300"
+                      title="GitHub"
+                    >
+                      <Github size={16} />
                     </a>
                   )}
-                  <a href="https://www.linkedin.com/" target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-blue-500 dark:text-gray-400 dark:hover:text-blue-400">
-                    <Linkedin size={18} />
+                  <a 
+                    href="https://www.linkedin.com/" 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gradient-to-br hover:from-blue-500 hover:to-purple-600 hover:text-white transition-all duration-300"
+                    title="LinkedIn"
+                  >
+                    <Linkedin size={16} />
                   </a>
                 </div>
               </div>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 truncate">{user?.bio || 'No bio available'}</p>
+              
+              {/* Bio with styled container */}
+              {user?.bio && (
+                <div className="mt-3 px-4 py-2.5 bg-gray-50 dark:bg-gray-700/30 rounded-lg text-gray-700 dark:text-gray-300 text-sm leading-relaxed relative overflow-hidden">
+                  <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-emerald-500 to-blue-500"></div>
+                  <p className="pl-2">{user?.bio || 'No bio available'}</p>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -478,19 +598,22 @@ const Dashboard = () => {
               value={stats.totalRepos} 
               icon={<GitBranch size={18} />} 
               color="blue"
+              badge="Total"
             />
             <StatCard 
               title="Stars" 
               value={stats.totalStars} 
               icon={<Star size={18} />} 
               color="amber"
+              badge="Earned"
             />
             <StatCard 
               title="Current Streak" 
               value={stats.currentStreak} 
               icon={<Flame size={18} />} 
-              color="red"
+              color="rose"
               subtitle="days"
+              badge="Active"
             />
           </div>
           
@@ -500,20 +623,23 @@ const Dashboard = () => {
               title="Commits" 
               value={stats.totalCommits || stats.totalContributions} 
               icon={<GitCommit size={18} />} 
-              color="emerald"
+              color="green"
+              badge="Activity"
             />
             <StatCard 
               title="Contributions" 
               value={stats.totalContributions} 
               icon={<Calendar size={18} />} 
               color="purple"
+              badge="Impact"
             />
             <StatCard 
               title="Longest Streak" 
               value={stats.longestStreak} 
               icon={<Award size={18} />} 
-              color="indigo"
+              color="blue"
               subtitle="days"
+              badge="Record"
             />
           </div>
         </div>

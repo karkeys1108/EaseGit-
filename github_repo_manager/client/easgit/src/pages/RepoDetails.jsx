@@ -402,7 +402,7 @@ const CommitsTab = ({ owner, repo }) => {
       if (networkContainerRef.current) {
         setNetworkDimensions({
           width: networkContainerRef.current.offsetWidth,
-          height: 500
+          height: 600
         });
       }
     };
@@ -586,6 +586,11 @@ const CommitsTab = ({ owner, repo }) => {
             <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
               <feDropShadow dx="0" dy="2" stdDeviation="3" floodOpacity="0.3" />
             </filter>
+            
+            {/* Avatar clip path */}
+            <clipPath id="avatarClip">
+              <circle cx="10" cy="0" r="10" />
+            </clipPath>
           </defs>
           
           <div className="absolute top-4 right-4 flex space-x-2 z-10">
@@ -626,23 +631,41 @@ const CommitsTab = ({ owner, repo }) => {
               <circle 
                 cx={networkDimensions.width / 2} 
                 cy={250} 
-                r="5" 
-                fill="#CBD5E1" 
-                opacity="0.5"
+                r="8" 
+                fill="url(#lineGradient1)" 
+                opacity="0.7"
               />
               
-              {/* Draw curved connection lines between commits */}
+              {/* Connect all nodes to central hub */}
+              {commitNodes.map((node) => {
+                const colorIndex = node.index % 5;
+                const lineGradient = colorIndex === 0 ? "url(#lineGradient1)" : 
+                                    colorIndex === 1 ? "url(#lineGradient2)" : 
+                                    "url(#lineGradient3)";
+                
+                return (
+                  <line 
+                    key={`hub-line-${node.commit.sha}`}
+                    x1={node.x}
+                    y1={node.y}
+                    x2={networkDimensions.width / 2}
+                    y2={250}
+                    stroke={lineGradient}
+                    strokeWidth="1.5"
+                    strokeDasharray="3,3"
+                    opacity={hoveredCommit === node.commit.sha ? "0.8" : "0.4"}
+                    className="transition-all duration-300 ease-in-out"
+                  />
+                );
+              })}
+              
+              {/* Sequential connections between commits */}
               {commitNodes.map((node, index) => {
                 if (index === 0) return null;
                 
                 const prevNode = commitNodes[index - 1];
-                const midX = (prevNode.x + node.x) / 2;
-                const midY = (prevNode.y + node.y) / 2;
-                
-                // Create a curved path
                 const path = `M ${prevNode.x} ${prevNode.y} Q ${networkDimensions.width / 2} ${250}, ${node.x} ${node.y}`;
                 
-                // Determine line gradient based on index
                 const lineGradient = index % 3 === 0 ? "url(#lineGradient1)" : 
                                     index % 3 === 1 ? "url(#lineGradient2)" : 
                                     "url(#lineGradient3)";
@@ -652,19 +675,50 @@ const CommitsTab = ({ owner, repo }) => {
                     key={`line-${node.commit.sha}`}
                     d={path}
                     stroke={lineGradient}
-                    strokeWidth={hoveredCommit === node.commit.sha || hoveredCommit === prevNode.commit.sha ? "3" : "2"}
+                    strokeWidth="2"
                     strokeDasharray="5,5"
                     fill="none"
                     opacity={hoveredCommit === node.commit.sha || hoveredCommit === prevNode.commit.sha ? "0.9" : "0.6"}
-                    className="transition-all duration-300"
+                    className="transition-all duration-300 ease-in-out"
                   />
                 );
+              })}
+              
+              {/* Add connections between all nodes for a complete network */}
+              {commitNodes.map((node, i) => {
+                return commitNodes.map((targetNode, j) => {
+                  // Skip self-connections, sequential connections (already drawn), and only connect each pair once
+                  if (i >= j || Math.abs(i - j) === 1) return null;
+                  
+                  // Connect all nodes regardless of distance
+                  const colorIndex = (i + j) % 5;
+                  const lineGradient = colorIndex === 0 ? "url(#lineGradient1)" : 
+                                      colorIndex === 1 ? "url(#lineGradient2)" : 
+                                      "url(#lineGradient3)";
+                  
+                  // Calculate distance for opacity - farther nodes have more transparent connections
+                  const distance = Math.abs(i - j);
+                  const opacity = Math.max(0.1, 0.5 - (distance * 0.05));
+                  
+                  return (
+                    <path
+                      key={`network-line-${node.commit.sha}-${targetNode.commit.sha}`}
+                      d={`M ${node.x} ${node.y} Q ${(node.x + targetNode.x) / 2} ${(node.y + targetNode.y) / 2 + 30}, ${targetNode.x} ${targetNode.y}`}
+                      stroke={lineGradient}
+                      strokeWidth="1"
+                      strokeDasharray="2,2"
+                      fill="none"
+                      opacity={opacity}
+                      className="transition-all duration-300 ease-in-out"
+                    />
+                  );
+                });
               })}
               
               {/* Draw commit nodes */}
               {commitNodes.map((node, index) => {
                 const isHovered = hoveredCommit === node.commit.sha;
-                const nodeSize = isHovered ? 22 : 18;
+                const nodeSize = isHovered ? 24 : 20;
                 
                 // Determine node color based on index
                 const colorIndex = index % 5;
@@ -680,20 +734,42 @@ const CommitsTab = ({ owner, repo }) => {
                     onMouseEnter={() => setHoveredCommit(node.commit.sha)}
                     onMouseLeave={() => setHoveredCommit(null)}
                   >
-                    {/* Node shadow */}
+                    {/* Node shadow - always present */}
                     <circle 
-                      r={nodeSize + 2}
-                      fill="rgba(0,0,0,0.1)"
-                      opacity="0.5"
+                      r={nodeSize + 3}
+                      fill="rgba(0,0,0,0.2)"
+                      opacity="0.6"
                       transform="translate(2,2)"
+                      className="transition-all duration-300 ease-in-out"
                     />
                     
-                    {/* Node circle */}
+                    {/* Outer glow ring - only visible on hover */}
+                    {isHovered && (
+                      <circle
+                        r={nodeSize + 8}
+                        fill="none"
+                        stroke={colorIndex === 0 ? "#3B82F6" : 
+                                colorIndex === 1 ? "#10B981" : 
+                                colorIndex === 2 ? "#F59E0B" : 
+                                colorIndex === 3 ? "#EF4444" : 
+                                "#8B5CF6"}
+                        strokeWidth="2"
+                        strokeOpacity="0.4"
+                        className="animate-pulse"
+                      />
+                    )}
+                    
+                    {/* Node circle with stroke for better definition */}
                     <circle 
                       r={nodeSize}
                       fill={isHovered ? highlightGradient : nodeGradient}
-                      className="transition-all duration-300"
-                      filter={isHovered ? "url(#glow)" : ""}
+                      stroke={colorIndex === 0 ? "#2563EB" : 
+                              colorIndex === 1 ? "#059669" : 
+                              colorIndex === 2 ? "#D97706" : 
+                              colorIndex === 3 ? "#DC2626" : 
+                              "#7C3AED"}
+                      strokeWidth="1.5"
+                      className="transition-all duration-300 ease-in-out"
                     />
                     
                     {/* Node text */}
@@ -701,27 +777,43 @@ const CommitsTab = ({ owner, repo }) => {
                       fill="white"
                       textAnchor="middle"
                       dominantBaseline="middle"
-                      fontSize="11"
+                      fontSize="12"
                       fontWeight="bold"
-                      className="select-none"
+                      className="select-none pointer-events-none"
+                      style={{ textShadow: "0px 1px 2px rgba(0,0,0,0.3)" }}
                     >
                       {index + 1}
                     </text>
                     
-                    {/* Date label */}
-                    <text
-                      y={nodeSize + 15}
-                      fill="#64748B"
-                      textAnchor="middle"
-                      fontSize="10"
-                      className="dark:fill-gray-400 select-none"
-                    >
-                      {node.date.toLocaleDateString()}
-                    </text>
+                    {/* Date label with background for better readability */}
+                    <g transform={`translate(0, ${nodeSize + 18})`}>
+                      <rect
+                        x="-30"
+                        y="-8"
+                        width="60"
+                        height="16"
+                        rx="4"
+                        fill="white"
+                        fillOpacity="0.7"
+                        className="dark:fill-gray-800/70"
+                      />
+                      <text
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                        fontSize="10"
+                        fill="#374151"
+                        className="dark:fill-gray-200"
+                      >
+                        {node.date.toLocaleDateString()}
+                      </text>
+                    </g>
                     
                     {/* Commit info on hover */}
                     {isHovered && (
-                      <g filter="url(#shadow)">
+                      <g 
+                        className="transition-opacity duration-300 ease-in-out"
+                        style={{ opacity: 1 }}
+                      >
                         <rect
                           x="30"
                           y="-50"
@@ -732,6 +824,7 @@ const CommitsTab = ({ owner, repo }) => {
                           fillOpacity="0.98"
                           stroke="#E2E8F0"
                           className="dark:fill-gray-800 dark:stroke-gray-700"
+                          filter="drop-shadow(0px 4px 6px rgba(0, 0, 0, 0.1))"
                         />
                         
                         {/* Commit message */}
@@ -756,6 +849,17 @@ const CommitsTab = ({ owner, repo }) => {
                             fill="#E2E8F0"
                             className="dark:fill-gray-700"
                           />
+                          {node.commit.author?.avatar_url && (
+                            <image
+                              href={node.commit.author.avatar_url}
+                              x="0"
+                              y="-10"
+                              height="20"
+                              width="20"
+                              preserveAspectRatio="xMidYMid slice"
+                              clipPath="url(#avatarClip)"
+                            />
+                          )}
                           <text
                             x="30"
                             y="0"
@@ -781,14 +885,18 @@ const CommitsTab = ({ owner, repo }) => {
                         </g>
                         
                         {/* View button */}
-                        <g transform="translate(210, -30)">
+                        <g transform="translate(210, 20)">
                           <a 
                             href={node.commit.html_url} 
                             target="_blank" 
                             rel="noopener noreferrer"
                           >
-                            <circle
-                              r="12"
+                            <rect
+                              x="-15"
+                              y="-15"
+                              width="30"
+                              height="30"
+                              rx="15"
                               fill="#EFF6FF"
                               className="dark:fill-blue-900/30"
                             />
@@ -1303,7 +1411,7 @@ const BranchesTab = ({ branches, loading }) => {
       setBranchTree(calculatePositions(branchMap[defaultBranch.name]));
     }
   }, [branches, canvasSize.height]);
-  
+
   // Handle mouse events for panning
   const handleMouseDown = (e) => {
     setIsDragging(true);

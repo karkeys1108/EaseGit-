@@ -200,221 +200,271 @@ const RepositoryAnalytics = ({ repositories }) => {
   };
   
   return (
-    <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-md backdrop-filter rounded-lg shadow-lg p-6 border border-white/20 dark:border-gray-700/50">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-bold dark:text-white flex items-center">
-          <GitBranch className="h-5 w-5 mr-2" />
-          Repository Analytics
-        </h2>
-        
-        <div className="flex items-center gap-3">
-          {repo && repo.owner && (
-            <Link 
-              to={`/repos/${repo.owner.login}/${repo.name}`}
-              className="flex items-center px-3 py-1.5 bg-blue-500/90 text-white rounded-md text-sm font-medium hover:bg-blue-600/90 transition-colors"
-            >
-              <BarChart2 className="h-4 w-4 mr-1.5" />
-              Detailed Analytics
-            </Link>
-          )}
+    <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-md backdrop-filter rounded-xl shadow-xl p-6 border border-white/20 dark:border-gray-700/50 overflow-hidden">
+      <div className="flex flex-col space-y-6">
+        {/* Header with repository selector */}
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-bold text-gray-800 dark:text-white flex items-center">
+            <GitBranch className="h-5 w-5 mr-2 text-blue-500" />
+            Repository Analytics
+          </h2>
           
           <div className="relative">
-            <button 
-              className="flex items-center px-3 py-1.5 bg-white/30 dark:bg-gray-700/50 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-white/50 dark:hover:bg-gray-600/70 transition-colors backdrop-blur-sm"
+            <button
+              className="flex items-center px-4 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-700 dark:to-gray-800 rounded-lg border border-blue-100 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-blue-100 dark:hover:bg-gray-700 transition-colors shadow-sm"
               onClick={() => setShowDropdown(!showDropdown)}
             >
-              {selectedRepo}
-              <ChevronDown className="h-4 w-4 ml-1" />
+              <span className="mr-2 font-medium truncate max-w-[150px]">{selectedRepo}</span>
+              <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${showDropdown ? 'transform rotate-180' : ''}`} />
             </button>
             
             {showDropdown && (
-              <div className="absolute right-0 mt-1 w-56 bg-white/90 dark:bg-gray-700/90 rounded-md shadow-lg z-10 backdrop-blur-sm max-h-60 overflow-y-auto">
-                <div className="py-1">
-                  {repositories.map(repo => (
-                    <button
-                      key={repo.id}
-                      className={`block w-full text-left px-4 py-2 text-sm ${
-                        selectedRepo === repo.name 
-                          ? 'bg-blue-100/70 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' 
-                          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100/70 dark:hover:bg-gray-600/50'
-                      }`}
-                      onClick={() => {
-                        setSelectedRepo(repo.name);
-                        setShowDropdown(false);
-                      }}
-                    >
-                      {repo.name}
-                    </button>
-                  ))}
+              <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-100 dark:border-gray-700 z-10 max-h-60 overflow-y-auto custom-scrollbar">
+                {repositories.map(repo => (
+                  <button
+                    key={repo.id}
+                    className="w-full text-left px-4 py-3 hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors flex items-center space-x-2"
+                    onClick={() => {
+                      setSelectedRepo(repo.name);
+                      setShowDropdown(false);
+                    }}
+                  >
+                    <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/30 dark:to-indigo-900/30 rounded-md flex items-center justify-center text-blue-600 dark:text-blue-400">
+                      {repo.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-gray-800 dark:text-white truncate">{repo.name}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{repo.owner?.login || 'Unknown owner'}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+        
+        {/* Repository stats cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-gradient-to-br from-blue-50/70 to-blue-100/70 dark:from-blue-900/20 dark:to-blue-800/20 rounded-xl p-4 border border-blue-100/50 dark:border-blue-800/30 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-blue-600 dark:text-blue-400">Stars</p>
+                <p className="text-2xl font-bold text-gray-800 dark:text-white mt-1">{formatNumber(repo.stargazers_count || 0)}</p>
+              </div>
+              <div className="p-2 bg-blue-100/50 dark:bg-blue-900/30 rounded-lg">
+                <Star className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-gradient-to-br from-purple-50/70 to-purple-100/70 dark:from-purple-900/20 dark:to-purple-800/20 rounded-xl p-4 border border-purple-100/50 dark:border-purple-800/30 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-purple-600 dark:text-purple-400">Watchers</p>
+                <p className="text-2xl font-bold text-gray-800 dark:text-white mt-1">{formatNumber(repo.watchers_count || 0)}</p>
+              </div>
+              <div className="p-2 bg-purple-100/50 dark:bg-purple-900/30 rounded-lg">
+                <Eye className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-gradient-to-br from-green-50/70 to-green-100/70 dark:from-green-900/20 dark:to-green-800/20 rounded-xl p-4 border border-green-100/50 dark:border-green-800/30 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-green-600 dark:text-green-400">Forks</p>
+                <p className="text-2xl font-bold text-gray-800 dark:text-white mt-1">{formatNumber(repo.forks_count || 0)}</p>
+              </div>
+              <div className="p-2 bg-green-100/50 dark:bg-green-900/30 rounded-lg">
+                <GitFork className="h-5 w-5 text-green-600 dark:text-green-400" />
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-gradient-to-br from-amber-50/70 to-amber-100/70 dark:from-amber-900/20 dark:to-amber-800/20 rounded-xl p-4 border border-amber-100/50 dark:border-amber-800/30 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-amber-600 dark:text-amber-400">Issues</p>
+                <p className="text-2xl font-bold text-gray-800 dark:text-white mt-1">{formatNumber(repo.open_issues_count || 0)}</p>
+              </div>
+              <div className="p-2 bg-amber-100/50 dark:bg-amber-900/30 rounded-lg">
+                <Code className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        {/* Main content area */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Repository details */}
+          <div className="bg-gradient-to-br from-gray-50/70 to-gray-100/70 dark:from-gray-900/30 dark:to-gray-800/30 rounded-xl p-5 backdrop-blur-sm shadow-sm border border-gray-100/50 dark:border-gray-700/30">
+            <h3 className="text-md font-medium text-gray-800 dark:text-white mb-4 flex items-center">
+              <GitBranch className="h-4 w-4 mr-2 text-blue-500" />
+              Repository Details
+            </h3>
+            
+            <div className="space-y-4">
+              <div>
+                <h4 className="text-xs font-medium text-gray-500 dark:text-gray-400">Repository Name</h4>
+                <p className="text-sm font-medium text-gray-800 dark:text-white mt-1">{repo.name}</p>
+              </div>
+              
+              <div>
+                <h4 className="text-xs font-medium text-gray-500 dark:text-gray-400">Description</h4>
+                <p className="text-sm text-gray-700 dark:text-gray-300 mt-1">{repo.description || 'No description provided'}</p>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h4 className="text-xs font-medium text-gray-500 dark:text-gray-400">Created</h4>
+                  <p className="text-sm text-gray-700 dark:text-gray-300 mt-1">
+                    {new Date(repo.created_at).toLocaleDateString()}
+                  </p>
+                </div>
+                
+                <div>
+                  <h4 className="text-xs font-medium text-gray-500 dark:text-gray-400">Last Updated</h4>
+                  <p className="text-sm text-gray-700 dark:text-gray-300 mt-1">
+                    {new Date(repo.updated_at).toLocaleDateString()}
+                  </p>
                 </div>
               </div>
-            )}
-          </div>
-        </div>
-      </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-        {/* Repository stats */}
-        <div className="bg-gradient-to-br from-gray-50/50 to-gray-100/50 dark:from-gray-900/30 dark:to-gray-800/30 rounded-xl p-5 backdrop-blur-sm">
-          <h3 className="text-md font-medium text-gray-800 dark:text-white mb-4">Repository Stats</h3>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex items-center">
-              <div className="p-2 rounded-full bg-blue-100/50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 mr-3">
-                <Star className="h-5 w-5" />
-              </div>
+              
               <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Stars</p>
-                <p className="text-lg font-bold text-gray-800 dark:text-white">{formatNumber(repo.stargazers_count)}</p>
+                <h4 className="text-xs font-medium text-gray-500 dark:text-gray-400">Default Branch</h4>
+                <div className="flex items-center mt-1">
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300">
+                    <GitBranch className="h-3 w-3 mr-1" />
+                    {repo.default_branch || 'main'}
+                  </span>
+                </div>
               </div>
-            </div>
-            
-            <div className="flex items-center">
-              <div className="p-2 rounded-full bg-purple-100/50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 mr-3">
-                <GitFork className="h-5 w-5" />
-              </div>
+              
               <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Forks</p>
-                <p className="text-lg font-bold text-gray-800 dark:text-white">{formatNumber(repo.forks_count)}</p>
-              </div>
-            </div>
-            
-            <div className="flex items-center">
-              <div className="p-2 rounded-full bg-amber-100/50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 mr-3">
-                <Eye className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Watchers</p>
-                <p className="text-lg font-bold text-gray-800 dark:text-white">{formatNumber(repo.watchers_count)}</p>
-              </div>
-            </div>
-            
-            <div className="flex items-center">
-              <div className="p-2 rounded-full bg-emerald-100/50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 mr-3">
-                <Code className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Size</p>
-                <p className="text-lg font-bold text-gray-800 dark:text-white">{formatNumber(repo.size)} KB</p>
+                <Link 
+                  to={`/repos/${repo.owner?.login}/${repo.name}`}
+                  className="inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50 transition-colors mt-2"
+                >
+                  View Repository Details
+                  <svg className="w-3.5 h-3.5 ml-2" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 10">
+                    <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M1 5h12m0 0L9 1m4 4L9 9"/>
+                  </svg>
+                </Link>
               </div>
             </div>
           </div>
-        </div>
-        
-        {/* Repository details */}
-        <div className="bg-gradient-to-br from-gray-50/50 to-gray-100/50 dark:from-gray-900/30 dark:to-gray-800/30 rounded-xl p-5 backdrop-blur-sm">
-          <h3 className="text-md font-medium text-gray-800 dark:text-white mb-2">{repo.name}</h3>
-          <p className="text-gray-600 dark:text-gray-300 text-sm mb-3 line-clamp-2">{repo.description || 'No description available'}</p>
           
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <p className="text-gray-500 dark:text-gray-400">Created</p>
-              <p className="text-gray-800 dark:text-white">{new Date(repo.created_at).toLocaleDateString()}</p>
-            </div>
-            <div>
-              <p className="text-gray-500 dark:text-gray-400">Last Updated</p>
-              <p className="text-gray-800 dark:text-white">{new Date(repo.updated_at).toLocaleDateString()}</p>
-            </div>
-            <div>
-              <p className="text-gray-500 dark:text-gray-400">Default Branch</p>
-              <p className="text-gray-800 dark:text-white">{repo.default_branch}</p>
-            </div>
-            <div>
-              <p className="text-gray-500 dark:text-gray-400">License</p>
-              <p className="text-gray-800 dark:text-white">{repo.license?.name || 'Not specified'}</p>
+          {/* Language distribution */}
+          <div className="bg-gradient-to-br from-blue-50/70 to-indigo-50/70 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl p-5 backdrop-blur-sm shadow-sm border border-blue-100/50 dark:border-indigo-800/30">
+            <h3 className="text-md font-medium text-gray-800 dark:text-white mb-4 flex items-center">
+              <Code className="h-4 w-4 mr-2 text-blue-500" />
+              Language Distribution
+            </h3>
+            
+            <div className="h-64">
+              {topLanguages.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={topLanguages}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      paddingAngle={2}
+                      dataKey="value"
+                      stroke="#fff"
+                      strokeWidth={2}
+                    >
+                      {topLanguages.map((entry, index) => (
+                        <Cell 
+                          key={`cell-${index}`} 
+                          fill={COLORS[entry.name] || DEFAULT_COLORS[index % DEFAULT_COLORS.length]} 
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip content={<CustomTooltip />} />
+                    <Legend 
+                      layout="vertical" 
+                      verticalAlign="middle" 
+                      align="right"
+                      iconType="circle"
+                      iconSize={10}
+                      formatter={(value) => (
+                        <span className="text-xs font-medium text-gray-700 dark:text-gray-300">{value}</span>
+                      )}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-center">
+                    <Code className="h-10 w-10 text-gray-400 mx-auto mb-2" />
+                    <p className="text-gray-500 dark:text-gray-400">No language data available</p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
-        </div>
-      </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* Language distribution */}
-        <div className="bg-gradient-to-br from-gray-50/50 to-gray-100/50 dark:from-gray-900/30 dark:to-gray-800/30 rounded-xl p-5 backdrop-blur-sm">
-          <h3 className="text-md font-medium text-gray-800 dark:text-white mb-4 flex items-center">
-            <Code className="h-4 w-4 mr-2" />
-            Language Distribution
-          </h3>
-          <div className="h-64">
-            {topLanguages.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={topLanguages}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    paddingAngle={2}
-                    dataKey="value"
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    labelLine={false}
-                  >
-                    {topLanguages.map((entry, index) => (
-                      <Cell 
-                        key={`cell-${index}`} 
-                        fill={COLORS[entry.name] || DEFAULT_COLORS[index % DEFAULT_COLORS.length]} 
-                      />
-                    ))}
-                  </Pie>
-                  <Tooltip content={<CustomTooltip />} />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex items-center justify-center h-full">
-                <p className="text-gray-500 dark:text-gray-400">No language data available</p>
-              </div>
-            )}
-          </div>
-        </div>
-        
-        {/* Latest Commits */}
-        <div className="bg-gradient-to-br from-gray-50/50 to-gray-100/50 dark:from-gray-900/30 dark:to-gray-800/30 rounded-xl p-5 backdrop-blur-sm">
-          <h3 className="text-md font-medium text-gray-800 dark:text-white mb-4 flex items-center">
-            <GitCommit className="h-4 w-4 mr-2" />
-            Latest Commits
-          </h3>
-          <div className="h-64 overflow-y-auto pr-2 custom-scrollbar">
-            {loadingCommits ? (
-              <div className="flex items-center justify-center h-full">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-              </div>
-            ) : commits.length > 0 ? (
-              <ul className="space-y-3">
-                {commits.map((commit, index) => (
-                  <li key={commit.sha || index} className="bg-white/50 dark:bg-gray-700/50 rounded-lg p-3 border border-gray-100/50 dark:border-gray-600/50 backdrop-blur-sm">
-                    <div className="flex items-start">
-                      <div className="p-2 rounded-full bg-blue-100/50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 mr-3 mt-1 flex-shrink-0">
-                        <GitCommit className="h-4 w-4" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-800 dark:text-white truncate">
-                          {commit.commit?.message || 'No message'}
-                        </p>
-                        <div className="flex items-center mt-1 text-xs text-gray-500 dark:text-gray-400">
-                          <div className="flex items-center mr-3">
-                            <Calendar className="h-3 w-3 mr-1" />
-                            {new Date(commit.commit?.author?.date || Date.now()).toLocaleDateString()}
-                          </div>
-                          <div className="flex items-center">
-                            {commit.author?.login ? (
-                              <span>{commit.author.login}</span>
-                            ) : (
-                              <span>{commit.commit?.author?.name || 'Unknown author'}</span>
-                            )}
+          
+          {/* Latest Commits */}
+          <div className="bg-gradient-to-br from-gray-50/70 to-gray-100/70 dark:from-gray-900/30 dark:to-gray-800/30 rounded-xl p-5 backdrop-blur-sm shadow-sm border border-gray-100/50 dark:border-gray-700/30 md:col-span-2">
+            <h3 className="text-md font-medium text-gray-800 dark:text-white mb-4 flex items-center">
+              <GitCommit className="h-4 w-4 mr-2 text-blue-500" />
+              Latest Commits
+            </h3>
+            <div className="h-64 overflow-y-auto pr-2 custom-scrollbar">
+              {loadingCommits ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+                </div>
+              ) : commits.length > 0 ? (
+                <ul className="space-y-3">
+                  {commits.map((commit, index) => (
+                    <li key={commit.sha || index} className="bg-white/70 dark:bg-gray-700/50 rounded-lg p-3 border border-gray-100/50 dark:border-gray-600/50 backdrop-blur-sm hover:shadow-md transition-shadow">
+                      <div className="flex items-start">
+                        <div className="p-2 rounded-full bg-blue-100/70 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 mr-3 mt-1 flex-shrink-0">
+                          <GitCommit className="h-4 w-4" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-800 dark:text-white truncate">
+                            {commit.commit?.message || 'No message'}
+                          </p>
+                          <div className="flex items-center mt-2 text-xs text-gray-500 dark:text-gray-400">
+                            <div className="flex items-center mr-3">
+                              <Calendar className="h-3 w-3 mr-1" />
+                              {new Date(commit.commit?.author?.date || Date.now()).toLocaleDateString()}
+                            </div>
+                            <div className="flex items-center">
+                              {commit.author?.avatar_url && (
+                                <img 
+                                  src={commit.author.avatar_url} 
+                                  alt={commit.author.login}
+                                  className="w-4 h-4 rounded-full mr-1"
+                                />
+                              )}
+                              <span>
+                                {commit.author?.login ? (
+                                  <span className="font-medium">{commit.author.login}</span>
+                                ) : (
+                                  <span>{commit.commit?.author?.name || 'Unknown author'}</span>
+                                )}
+                              </span>
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <div className="flex flex-col items-center justify-center h-full">
-                <GitCommit className="h-10 w-10 text-gray-400 mb-2" />
-                <p className="text-gray-500 dark:text-gray-400">No commit history available</p>
-              </div>
-            )}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full">
+                  <GitCommit className="h-10 w-10 text-gray-400 mb-2" />
+                  <p className="text-gray-500 dark:text-gray-400">No commit history available</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
