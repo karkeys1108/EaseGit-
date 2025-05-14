@@ -50,24 +50,27 @@ const Dashboard = () => {
         // Set GitHub Stats URL
         setGithubStats(`https://github-readme-stats.vercel.app/api?username=${userData.login}&show_icons=true&count_private=true&hide=prs&theme=radical`);
         
-        // Fetch GitHub Stats data to get contribution count
+        // Store user stats in MongoDB for leaderboard
         try {
-          const statsResponse = await axios.get(`https://api.github.com/users/${userData.login}`, {
+          console.log('Updating user stats in MongoDB...');
+          const statsResponse = await axios.post('http://localhost:5000/api/user/stats', {}, {
             headers: { 
-              Authorization: `token ${token}`,
-              Accept: 'application/vnd.github.v3+json'
+              Authorization: `token ${token}`
             }
           });
           
-          // Update contribution count from GitHub Stats
-          if (statsResponse.data && statsResponse.data.public_repos) {
-            setStats(prevStats => ({
-              ...prevStats,
-              totalContributions: statsResponse.data.public_repos + (statsResponse.data.total_private_repos || 0)
-            }));
+          if (statsResponse.data && statsResponse.data.stats) {
+            console.log('User stats updated successfully in MongoDB');
+            // Use the stats from MongoDB if available
+            setStats(statsResponse.data.stats);
+          } else {
+            // Fallback to fetching stats directly from GitHub API
+            fetchStatsFromGitHub(userData.login, token);
           }
         } catch (error) {
-          console.warn('Error fetching GitHub Stats data:', error);
+          console.warn('Error updating user stats in MongoDB:', error);
+          // Fallback to fetching stats directly from GitHub API
+          fetchStatsFromGitHub(userData.login, token);
         }
       } catch (error) {
         console.warn('Error fetching user data from API, using localStorage instead:', error);
@@ -77,6 +80,7 @@ const Dashboard = () => {
           userData = JSON.parse(storedUser);
           console.log('Using stored user data for:', userData.login);
           setGithubStats(`https://github-readme-stats.vercel.app/api?username=${userData.login}&show_icons=true&count_private=true&hide=prs&theme=radical`);
+          fetchStatsFromGitHub(userData.login, token);
         } else {
           throw new Error('No user data available');
         }
@@ -438,6 +442,28 @@ const Dashboard = () => {
       setError('Failed to load dashboard data. Please try again later.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Helper function to fetch stats directly from GitHub API
+  const fetchStatsFromGitHub = async (username, token) => {
+    try {
+      const statsResponse = await axios.get(`https://api.github.com/users/${username}`, {
+        headers: { 
+          Authorization: `token ${token}`,
+          Accept: 'application/vnd.github.v3+json'
+        }
+      });
+      
+      // Update contribution count from GitHub Stats
+      if (statsResponse.data && statsResponse.data.public_repos) {
+        setStats(prevStats => ({
+          ...prevStats,
+          totalContributions: statsResponse.data.public_repos + (statsResponse.data.total_private_repos || 0)
+        }));
+      }
+    } catch (error) {
+      console.warn('Error fetching GitHub Stats data:', error);
     }
   };
 

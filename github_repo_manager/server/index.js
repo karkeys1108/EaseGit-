@@ -3,8 +3,45 @@ const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
 const jwt = require('jsonwebtoken');
+const mongoose = require('mongoose');
 
 const app = express();
+
+// Connect to MongoDB
+console.log('Attempting to connect to MongoDB...');
+console.log(`MongoDB URI: ${process.env.MONGODB_URI || 'mongodb://localhost:27017/easegit'}`);
+
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/easegit', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+})
+.then(() => {
+  console.log('Connected to MongoDB successfully');
+  
+  // Verify connection by listing collections
+  mongoose.connection.db.listCollections().toArray()
+    .then(collections => {
+      console.log('MongoDB collections:', collections.map(c => c.name));
+    })
+    .catch(err => console.error('Error listing collections:', err));
+})
+.catch(err => {
+  console.error('MongoDB connection error:', err);
+  console.error('Please make sure MongoDB is running and accessible');
+});
+
+// Log MongoDB connection events
+mongoose.connection.on('error', err => {
+  console.error('MongoDB connection error:', err);
+});
+
+mongoose.connection.on('disconnected', () => {
+  console.log('MongoDB disconnected');
+});
+
+mongoose.connection.on('reconnected', () => {
+  console.log('MongoDB reconnected');
+});
 
 // Import the GitHub data service - fix the path if needed
 let githubDataService;
@@ -23,6 +60,37 @@ try {
     storeUserToken: async () => false,
     fetchCommitData: async () => 1247,
     fetchUserContributionCalendar: async () => []
+  };
+}
+
+// Import and initialize the leaderboard service
+let leaderboardService;
+try {
+  console.log('Importing leaderboard service...');
+  leaderboardService = require('./services/leaderboardService');
+  
+  // Initialize the service immediately and synchronously
+  (async function initializeLeaderboardService() {
+    console.log('Starting leaderboard service initialization...');
+    try {
+      const initialized = await leaderboardService.init();
+      if (initialized) {
+        console.log('✅ Leaderboard service initialized successfully');
+      } else {
+        console.error('❌ Failed to initialize leaderboard service');
+      }
+    } catch (error) {
+      console.error('❌ Error during leaderboard service initialization:', error);
+    }
+  })();
+} catch (error) {
+  console.error('Failed to import leaderboard service:', error.message);
+  // Create a mock service to prevent errors
+  leaderboardService = {
+    updateUserStats: async () => null,
+    getLeaderboard: async () => ({ users: [], category: 'stars', lastUpdated: new Date() }),
+    getUserPosition: async () => ({ position: 0, total: 0 }),
+    init: async () => false
   };
 }
 
@@ -931,6 +999,182 @@ app.post('/api/repos/create', async (req, res) => {
     }
 });
 
+// LEADERBOARD ENDPOINTS
+
+// Update user stats in MongoDB (called during user authentication and dashboard load)
+app.post('/api/user/stats', async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+        return res.status(401).json({ error: 'No token provided' });
+    }
+
+    try {
+        console.log('Received request to update user stats');
+        const token = authHeader.split(' ')[1];
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        
+        // Get user data from GitHub API
+        console.log('Fetching user data from GitHub API');
+        const userResponse = await axios.get('https://api.github.com/user', {
+            headers: {
+                Authorization: `token ${decoded.accessToken}`,
+                Accept: 'application/vnd.github.v3+json'
+            }
+        });
+        
+        const userData = userResponse.data;
+        console.log(`Got user data for ${userData.login}`);
+        
+        // Update user stats in MongoDB
+        console.log('Calling leaderboardService.updateUserStats');
+        const userStats = await leaderboardService.updateUserStats(userData, decoded.accessToken);
+        
+        if (!userStats) {
+            console.error('Failed to update user stats - returned null');
+            return res.status(500).json({ error: 'Failed to update user stats' });
+        }
+        
+        console.log(`Successfully updated stats for ${userData.login}`);
+        res.json(userStats);
+    } catch (error) {
+        console.error('Error updating user stats:', error.message);
+        console.error(error.stack);
+        res.status(500).json({ error: 'Failed to update user stats' });
+    }
+});
+
+// Get leaderboard data
+app.get('/api/leaderboard', async (req, res) => {
+    try {
+        console.log('Received request to get leaderboard data');
+        const category = req.query.category || 'stars';
+        const limit = parseInt(req.query.limit) || 10;
+        
+        console.log(`Getting leaderboard for category: ${category}, limit: ${limit}`);
+        const leaderboard = await leaderboardService.getLeaderboard(category, limit);
+        
+        // Debug: Log the actual data being returned
+        console.log('Leaderboard data to return:', JSON.stringify(leaderboard, null, 2));
+        
+        console.log(`Returning leaderboard with ${leaderboard.users.length} users`);
+        res.json(leaderboard);
+    } catch (error) {
+        console.error('Error fetching leaderboard:', error.message);
+        console.error(error.stack);
+        res.status(500).json({ error: 'Failed to fetch leaderboard data' });
+    }
+});
+
+// Get user position in leaderboard
+app.get('/api/leaderboard/position/:username', async (req, res) => {
+    try {
+        console.log(`Received request to get position for user: ${req.params.username}`);
+        const { username } = req.params;
+        const category = req.query.category || 'stars';
+        
+        console.log(`Getting position for ${username} in category: ${category}`);
+        const position = await leaderboardService.getUserPosition(username, category);
+        
+        // Debug: Log the actual position data being returned
+        console.log(`Returning position for ${username}:`, JSON.stringify(position, null, 2));
+        res.json(position);
+    } catch (error) {
+        console.error(`Error fetching position for ${req.params.username}:`, error.message);
+        console.error(error.stack);
+        res.status(500).json({ error: 'Failed to fetch user position' });
+    }
+});
+
+// Manually refresh leaderboard data (authenticated users only)
+app.post('/api/leaderboard/refresh', async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+        return res.status(401).json({ error: 'No token provided' });
+    }
+
+    try {
+        const token = authHeader.split(' ')[1];
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        
+        console.log('Received request to update user stats');
+        
+        // Get user data from GitHub API
+        const userResponse = await axios.get('https://api.github.com/user', {
+            headers: {
+                Authorization: `token ${decoded.accessToken}`,
+                Accept: 'application/vnd.github.v3+json'
+            }
+        });
+        
+        const userData = userResponse.data;
+        console.log(`Got user data for ${userData.login}`);
+        
+        // Update user stats in database
+        console.log(`Calling leaderboardService.updateUserStats`);
+        const updatedStats = await leaderboardService.updateUserStats(userData, decoded.accessToken);
+        
+        if (updatedStats) {
+            console.log(`Successfully updated stats for ${userData.login}`);
+            
+            // Return the updated stats directly
+            res.json({
+                success: true,
+                stats: updatedStats.stats,
+                message: 'User stats updated successfully'
+            });
+        } else {
+            console.error(`Failed to update stats for ${userData.login}`);
+            res.status(500).json({ error: 'Failed to update user stats' });
+        }
+    } catch (error) {
+        console.error('Error refreshing leaderboard:', error.message);
+        console.error(error.stack);
+        res.status(500).json({ error: 'Failed to refresh leaderboard data' });
+    }
+});
+
+// Modify the existing dashboard data fetching to store stats in MongoDB
+app.get('/api/user/dashboard', async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+        return res.status(401).json({ error: 'No token provided' });
+    }
+
+    try {
+        const token = authHeader.split(' ')[1];
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        
+        // Get user data
+        const userResponse = await axios.get('https://api.github.com/user', {
+            headers: {
+                Authorization: `token ${decoded.accessToken}`,
+                Accept: 'application/vnd.github.v3+json'
+            }
+        });
+        
+        const userData = userResponse.data;
+        
+        // Update user stats in MongoDB in the background
+        leaderboardService.updateUserStats(userData, decoded.accessToken)
+            .then(stats => {
+                console.log(`Updated stats for ${userData.login} in the background`);
+            })
+            .catch(error => {
+                console.error(`Error updating stats for ${userData.login}:`, error.message);
+            });
+        
+        // Continue with the regular dashboard data fetching
+        // ... (existing dashboard data fetching code)
+        
+        // For now, just return the user data
+        res.json(userData);
+    } catch (error) {
+        console.error('Error fetching dashboard data:', error.message);
+        res.status(500).json({ error: 'Failed to fetch dashboard data' });
+    }
+});
+
+// Start the server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);

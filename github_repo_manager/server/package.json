@@ -17,6 +17,7 @@
     "express": "^5.1.0",
     "graphql-request": "^7.1.2",
     "jsonwebtoken": "^9.0.2",
+    "mongoose": "^7.5.0",
     "node-schedule": "^2.1.1",
     "redis": "^5.0.1"
   }

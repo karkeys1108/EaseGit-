@@ -11,6 +11,8 @@ import RepoWizard from './pages/RepoWizard';
 import Repos from './pages/Repos';
 import RepoCommits from './components/repos/RepoCommits';
 import RepoDetails from './pages/RepoDetails';
+import LearnGitHub from './pages/LearnGit';
+import LeaderboardPage from './pages/Leaderboard';
 
 const PrivateRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
@@ -69,6 +71,22 @@ function App() {
                 element={
                   <PrivateRoute>
                     <RepoWizard />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/learn-git"
+                element={
+                  <PrivateRoute>
+                    <LearnGitHub />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/leaderboard"
+                element={
+                  <PrivateRoute>
+                    <LeaderboardPage />
                   </PrivateRoute>
                 }
               />
