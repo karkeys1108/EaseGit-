@@ -1,9 +1,29 @@
 const schedule = require('node-schedule');
-const { request, gql } = require('graphql-request');
 const Redis = require('redis');
 const axios = require('axios');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
+
+// Flag to track if graphql-request has been initialized
+let graphqlRequest = null;
+let gql = null;
+
+// Function to initialize the graphql-request module
+const initGraphQLRequest = async () => {
+  try {
+    if (!graphqlRequest) {
+      const module = await import('graphql-request');
+      graphqlRequest = module.request;
+      gql = module.gql;
+      console.log('GraphQL request module initialized successfully');
+      return true;
+    }
+    return true;
+  } catch (error) {
+    console.error('Failed to initialize GraphQL request module:', error);
+    return false;
+  }
+};
 
 // Create Redis client for Windows
 const redisClient = Redis.createClient({
@@ -78,8 +98,8 @@ const storeUserToken = async (username, token) => {
   return false;
 };
 
-// GraphQL query to get total commit count
-const commitCountQuery = gql`
+// Store GraphQL queries as strings (without gql tag for now)
+const commitCountQuery = `
   query($username: String!) {
     user(login: $username) {
       contributionsCollection {
@@ -91,7 +111,7 @@ const commitCountQuery = gql`
 `;
 
 // GraphQL query to get repository data
-const repositoriesQuery = gql`
+const repositoriesQuery = `
   query($username: String!, $after: String) {
     user(login: $username) {
       repositories(first: 100, after: $after, orderBy: {field: UPDATED_AT, direction: DESC}) {
@@ -122,7 +142,7 @@ const repositoriesQuery = gql`
 `;
 
 // GraphQL query to get user contribution calendar (full year of activity)
-const contributionCalendarQuery = gql`
+const contributionCalendarQuery = `
   query($username: String!) {
     user(login: $username) {
       contributionsCollection {
@@ -144,16 +164,22 @@ const contributionCalendarQuery = gql`
 // Function to fetch commit data using GraphQL
 const fetchCommitData = async (username, token) => {
   try {
-    console.log(`Fetching commit data for ${username} using GraphQL...`);
+    // Initialize graphql-request if not already initialized
+    if (!await initGraphQLRequest()) {
+      throw new Error('GraphQL request module not initialized');
+    }
+
+    const cacheKey = `commits:${username}`;
     
-    // Store token for future background jobs
-    await storeUserToken(username, token);
-    
-    const headers = {
-      Authorization: `bearer ${token}`
-    };
-    
-    const data = await request(GITHUB_GRAPHQL_ENDPOINT, commitCountQuery, { username }, headers);
+    // Make the GraphQL request
+    const data = await graphqlRequest(
+      GITHUB_GRAPHQL_ENDPOINT,
+      commitCountQuery,
+      { username },
+      {
+        Authorization: `Bearer ${token}`
+      }
+    );
     
     const totalCommits = 
       data.user.contributionsCollection.totalCommitContributions + 
@@ -185,25 +211,25 @@ const fetchCommitData = async (username, token) => {
 // Function to fetch repositories using GraphQL with pagination
 const fetchRepositories = async (username, token) => {
   try {
-    console.log(`Fetching repositories for ${username} using GraphQL...`);
-    
-    // Store token for future background jobs
-    await storeUserToken(username, token);
-    
-    const headers = {
-      Authorization: `bearer ${token}`
-    };
+    // Initialize graphql-request if not already initialized
+    if (!await initGraphQLRequest()) {
+      throw new Error('GraphQL request module not initialized');
+    }
+
+    const cacheKey = `repositories:${username}`;
     
     let hasNextPage = true;
     let after = null;
     let allRepos = [];
     
     while (hasNextPage) {
-      const data = await request(
+      const data = await graphqlRequest(
         GITHUB_GRAPHQL_ENDPOINT, 
         repositoriesQuery, 
         { username, after }, 
-        headers
+        {
+          Authorization: `Bearer ${token}`
+        }
       );
       
       const repos = data.user.repositories.nodes;
@@ -242,172 +268,134 @@ const fetchRepositories = async (username, token) => {
 
 // Function to fetch user contribution calendar using GraphQL
 const fetchUserContributionCalendar = async (username, token) => {
-  const cacheKey = `contribution_calendar:${username}`;
-  
   try {
-    // Check cache first
-    if (redisClient.isOpen) {
-      try {
-        const cachedData = await redisClient.get(cacheKey);
-        if (cachedData) {
-          console.log(`[CACHE HIT] Using cached contribution calendar for ${username}`);
-          return JSON.parse(cachedData);
-        }
-      } catch (cacheError) {
-        console.warn(`[CACHE ERROR] Error accessing Redis cache: ${cacheError.message}`);
-        // Continue with API call if cache fails
-      }
+    // Initialize graphql-request if not already initialized
+    if (!await initGraphQLRequest()) {
+      throw new Error('GraphQL request module not initialized');
     }
+
+    const cacheKey = `contribution_calendar:${username}`;
     
-    console.log(`[CACHE MISS] Fetching contribution calendar for ${username} from GitHub API`);
-    
-    // GraphQL query to get contribution data
-    const query = `
-      query {
-        user(login: "${username}") {
-          contributionsCollection {
-            contributionCalendar {
-              totalContributions
-              weeks {
-                contributionDays {
-                  date
-                  contributionCount
-                  color
-                }
-              }
-            }
-            totalCommitContributions
-            restrictedContributionsCount
-          }
+    // Try GraphQL API first
+    try {
+      const data = await graphqlRequest(
+        GITHUB_GRAPHQL_ENDPOINT,
+        contributionCalendarQuery,
+        { username },
+        {
+          Authorization: `Bearer ${token}`
         }
-      }
-    `;
-    
-    // Make GraphQL request to GitHub API
-    const response = await axios.post(
-      'https://api.github.com/graphql',
-      { query },
-      {
-        headers: {
-          'Authorization': `token ${token}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/vnd.github.v3+json'
-        }
-      }
-    );
-    
-    console.log(`[API] GitHub GraphQL API response status: ${response.status}`);
-    
-    if (response.data.errors) {
-      console.error('[API ERROR] GraphQL errors:', response.data.errors);
-      throw new Error('GraphQL query failed: ' + JSON.stringify(response.data.errors));
-    }
-    
-    if (!response.data.data || !response.data.data.user || !response.data.data.user.contributionsCollection) {
-      console.error('[API ERROR] Invalid response structure:', response.data);
-      throw new Error('Invalid response structure from GitHub API');
-    }
-    
-    const contributionsCollection = response.data.data.user.contributionsCollection;
-    const calendar = contributionsCollection.contributionCalendar;
-    
-    // Calculate total contributions including private contributions
-    const totalContributions = 
-      contributionsCollection.totalCommitContributions + 
-      contributionsCollection.restrictedContributionsCount;
-    
-    console.log(`[API] Total contributions for ${username}: ${totalContributions}`);
-    
-    // Format the data for the frontend
-    const formattedData = {
-      totalContributions: totalContributions,
-      contributions: []
-    };
-    
-    // Process the weeks data to get daily contributions
-    calendar.weeks.forEach(week => {
-      week.contributionDays.forEach(day => {
-        formattedData.contributions.push({
-          date: day.date,
-          count: day.contributionCount,
-          color: day.color
+      );
+      
+      const contributionsCollection = data.user.contributionsCollection;
+      const calendar = contributionsCollection.contributionCalendar;
+      
+      // Calculate total contributions including private contributions
+      const totalContributions = 
+        contributionsCollection.totalCommitContributions + 
+        contributionsCollection.restrictedContributionsCount;
+      
+      console.log(`Total contributions for ${username}: ${totalContributions}`);
+      
+      // Format the data for the frontend
+      const formattedData = {
+        totalContributions: totalContributions,
+        contributions: []
+      };
+      
+      // Process the weeks data to get daily contributions
+      calendar.weeks.forEach(week => {
+        week.contributionDays.forEach(day => {
+          formattedData.contributions.push({
+            date: day.date,
+            count: day.contributionCount,
+            color: day.color
+          });
         });
       });
-    });
-    
-    // Sort contributions by date
-    formattedData.contributions.sort((a, b) => new Date(a.date) - new Date(b.date));
-    
-    // Cache the result for 1 hour
-    if (redisClient.isOpen) {
+      
+      // Sort contributions by date
+      formattedData.contributions.sort((a, b) => new Date(a.date) - new Date(b.date));
+      
+      // Cache the result for 1 hour
+      if (redisClient.isOpen) {
+        try {
+          await redisClient.setEx(cacheKey, 3600, JSON.stringify(formattedData));
+        } catch (cacheError) {
+          console.warn(`[CACHE ERROR] Failed to cache data: ${cacheError.message}`);
+        }
+      }
+      
+      return formattedData;
+    } catch (graphqlError) {
+      console.error('[API ERROR] GraphQL errors:', graphqlError);
+      
+      // Fallback to REST API if GraphQL fails
+      console.log(`[FALLBACK] Attempting to fetch basic contribution data using REST API`);
       try {
-        await redisClient.setEx(cacheKey, 3600, JSON.stringify(formattedData));
-      } catch (cacheError) {
-        console.warn(`[CACHE ERROR] Failed to cache data: ${cacheError.message}`);
+        const restResponse = await axios.get(`https://api.github.com/users/${username}/events`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/vnd.github.v3+json'
+          }
+        });
+        
+        // Process events to extract contribution data
+        const events = restResponse.data;
+        const contributions = [];
+        const dateMap = new Map();
+        
+        events.forEach(event => {
+          if (['PushEvent', 'CreateEvent', 'PullRequestEvent'].includes(event.type)) {
+            const date = event.created_at.split('T')[0];
+            if (!dateMap.has(date)) {
+              dateMap.set(date, 0);
+            }
+            dateMap.set(date, dateMap.get(date) + 1);
+          }
+        });
+        
+        for (const [date, count] of dateMap.entries()) {
+          contributions.push({
+            date,
+            count,
+            color: getColorForCount(count)
+          });
+        }
+        
+        const fallbackData = {
+          totalContributions: contributions.reduce((sum, item) => sum + item.count, 0),
+          contributions
+        };
+        
+        // Cache the fallback result for 30 minutes
+        if (redisClient.isOpen) {
+          try {
+            await redisClient.setEx(cacheKey, 1800, JSON.stringify(fallbackData));
+          } catch (cacheError) {
+            console.warn(`[CACHE ERROR] Failed to cache fallback data: ${cacheError.message}`);
+          }
+        }
+        
+        return fallbackData;
+      } catch (fallbackError) {
+        console.error(`[FALLBACK ERROR] Failed to fetch contribution data using REST API:`, fallbackError.message);
+        
+        // Return empty data structure instead of throwing error
+        return {
+          totalContributions: 0,
+          contributions: []
+        };
       }
     }
-    
-    return formattedData;
   } catch (error) {
     console.error(`[ERROR] Failed to fetch contribution calendar for ${username}:`, error.message);
     
-    // Fallback to REST API if GraphQL fails
-    console.log(`[FALLBACK] Attempting to fetch basic contribution data using REST API`);
-    try {
-      const restResponse = await axios.get(`https://api.github.com/users/${username}/events`, {
-        headers: {
-          'Authorization': `token ${token}`,
-          'Accept': 'application/vnd.github.v3+json'
-        }
-      });
-      
-      // Process events to extract contribution data
-      const events = restResponse.data;
-      const contributions = [];
-      const dateMap = new Map();
-      
-      events.forEach(event => {
-        if (['PushEvent', 'CreateEvent', 'PullRequestEvent'].includes(event.type)) {
-          const date = event.created_at.split('T')[0];
-          if (!dateMap.has(date)) {
-            dateMap.set(date, 0);
-          }
-          dateMap.set(date, dateMap.get(date) + 1);
-        }
-      });
-      
-      for (const [date, count] of dateMap.entries()) {
-        contributions.push({
-          date,
-          count,
-          color: getColorForCount(count)
-        });
-      }
-      
-      const fallbackData = {
-        totalContributions: contributions.reduce((sum, item) => sum + item.count, 0),
-        contributions
-      };
-      
-      // Cache the fallback result for 30 minutes
-      if (redisClient.isOpen) {
-        try {
-          await redisClient.setEx(cacheKey, 1800, JSON.stringify(fallbackData));
-        } catch (cacheError) {
-          console.warn(`[CACHE ERROR] Failed to cache fallback data: ${cacheError.message}`);
-        }
-      }
-      
-      return fallbackData;
-    } catch (fallbackError) {
-      console.error(`[FALLBACK ERROR] Failed to fetch contribution data using REST API:`, fallbackError.message);
-      
-      // Return empty data structure instead of throwing error
-      return {
-        totalContributions: 0,
-        contributions: []
-      };
-    }
+    // Return empty data structure instead of throwing error
+    return {
+      totalContributions: 0,
+      contributions: []
+    };
   }
 };
 
@@ -447,7 +435,15 @@ const updateUserGitHubData = async (username) => {
 };
 
 // Schedule background jobs
-const scheduleJobs = () => {
+const scheduleJobs = async () => {
+  // Initialize graphql-request module
+  const initialized = await initGraphQLRequest();
+  if (!initialized) {
+    console.error('Failed to initialize GitHub data service: GraphQL request module could not be loaded');
+    console.log('The server will continue to function without background jobs');
+    return;
+  }
+
   // Run every hour
   schedule.scheduleJob('0 * * * *', async () => {
     try {
@@ -504,5 +500,6 @@ module.exports = {
   fetchRepositories,
   updateUserGitHubData,
   storeUserToken,
-  fetchUserContributionCalendar
+  fetchUserContributionCalendar,
+  initGraphQLRequest // Export the initialization function
 };

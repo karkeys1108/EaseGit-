@@ -41,7 +41,7 @@ const Dashboard = () => {
       try {
         const userResponse = await axios.get('http://localhost:5000/api/user', {
           headers: { 
-            Authorization: `token ${token}` 
+            Authorization: `Bearer ${token}` 
           }
         });
         userData = userResponse.data;
@@ -55,7 +55,7 @@ const Dashboard = () => {
           console.log('Updating user stats in MongoDB...');
           const statsResponse = await axios.post('http://localhost:5000/api/user/stats', {}, {
             headers: { 
-              Authorization: `token ${token}`
+              Authorization: `Bearer ${token}`
             }
           });
           
@@ -125,7 +125,7 @@ const Dashboard = () => {
               direction: 'desc'
             },
             headers: { 
-              Authorization: `token ${token}` 
+              Authorization: `Bearer ${token}` 
             }
           });
           
@@ -204,7 +204,7 @@ const Dashboard = () => {
             console.log(`Fetching language data for ${repo.name}...`);
             const languageResponse = await axios.get(`http://localhost:5000/api/repos/${repo.owner.login}/${repo.name}/languages`, {
               headers: { 
-                Authorization: `token ${token}` 
+                Authorization: `Bearer ${token}` 
               }
             });
             
@@ -240,7 +240,7 @@ const Dashboard = () => {
         const commitsResponse = await axios.get('http://localhost:5000/api/user/commits', {
           headers: { 
             // GitHub requires "token" prefix
-            Authorization: `token ${token}` 
+            Authorization: `Bearer ${token}` 
           }
         });
         
@@ -353,7 +353,7 @@ const Dashboard = () => {
       try {
         const activityResponse = await axios.get('http://localhost:5000/api/user/activity', {
           headers: { 
-            Authorization: `token ${token}` 
+            Authorization: `Bearer ${token}` 
           }
         });
         
@@ -450,7 +450,7 @@ const Dashboard = () => {
     try {
       const statsResponse = await axios.get(`https://api.github.com/users/${username}`, {
         headers: { 
-          Authorization: `token ${token}`,
+          Authorization: `Bearer ${token}`,
           Accept: 'application/vnd.github.v3+json'
         }
       });

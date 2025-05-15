@@ -38,7 +38,7 @@ const RepoWizard = () => {
       const token = localStorage.getItem('token');
       await axios.post('http://localhost:5000/api/repos/create', formData, {
         headers: {
-          Authorization: `token ${token}`
+          Authorization: `Bearer ${token}`
         }
       });
       navigate('/dashboard');

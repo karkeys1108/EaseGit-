@@ -103,6 +103,13 @@ app.get('/api/auth/github', (req, res) => {
     res.json({ url: githubAuthUrl });
 });
 
+// Add a GET endpoint for the GitHub callback that redirects to the client-side route
+app.get('/api/auth/github/callback', (req, res) => {
+    const code = req.query.code;
+    const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+    res.redirect(`${clientUrl}/auth/github/callback?code=${code}`);
+});
+
 app.post('/api/auth/github/callback', async (req, res) => {
     const { code } = req.body;
     
@@ -123,7 +130,7 @@ app.post('/api/auth/github/callback', async (req, res) => {
         // Get user data - use token format required by GitHub API
         const userResponse = await axios.get('https://api.github.com/user', {
             headers: {
-                Authorization: `token ${accessToken}`,
+                Authorization: `Bearer ${accessToken}`,
                 Accept: 'application/vnd.github.v3+json'
             }
         });
@@ -181,7 +188,7 @@ app.get('/api/user/repos', async (req, res) => {
                 affiliation: 'owner,collaborator,organization_member'
             },
             headers: {
-                Authorization: `token ${decoded.accessToken}`,
+                Authorization: `Bearer ${decoded.accessToken}`,
                 Accept: 'application/vnd.github.v3+json'
             }
         });
@@ -260,7 +267,7 @@ app.get('/api/user', async (req, res) => {
         
         const response = await axios.get('https://api.github.com/user', {
             headers: {
-                Authorization: `token ${decoded.accessToken}`,
+                Authorization: `Bearer ${decoded.accessToken}`,
                 Accept: 'application/vnd.github.v3+json'
             }
         });
@@ -297,7 +304,7 @@ app.get('/api/repos/:owner/:repo/languages', async (req, res) => {
         try {
             const response = await axios.get(`https://api.github.com/repos/${owner}/${repo}/languages`, {
                 headers: {
-                    Authorization: `token ${decoded.accessToken}`,
+                    Authorization: `Bearer ${decoded.accessToken}`,
                     Accept: 'application/vnd.github.v3+json'
                 }
             });
@@ -344,7 +351,7 @@ app.get('/api/user/commits', async (req, res) => {
         // Get user info to get username
         const userResponse = await axios.get('https://api.github.com/user', {
             headers: {
-                Authorization: `token ${decoded.accessToken}`,
+                Authorization: `Bearer ${decoded.accessToken}`,
                 Accept: 'application/vnd.github.v3+json'
             }
         });
@@ -359,7 +366,7 @@ app.get('/api/user/commits', async (req, res) => {
         // Get recent commits for display (using REST API)
         const eventsResponse = await axios.get(`https://api.github.com/users/${username}/events`, {
             headers: {
-                Authorization: `token ${decoded.accessToken}`,
+                Authorization: `Bearer ${decoded.accessToken}`,
                 Accept: 'application/vnd.github.v3+json'
             }
         });
@@ -439,7 +446,7 @@ app.get('/api/activity', async (req, res) => {
         const userResponse = await axios.get('https://api.github.com/user', {
             headers: {
                 // GitHub API requires "token" format, not "bearer"
-                Authorization: `token ${decoded.accessToken}`,
+                Authorization: `Bearer ${decoded.accessToken}`,
                 Accept: 'application/vnd.github.v3+json'
             }
         });
@@ -477,7 +484,7 @@ app.get('/api/activity', async (req, res) => {
               { query },
               {
                 headers: {
-                  'Authorization': `token ${decoded.accessToken}`,
+                  'Authorization': `Bearer ${decoded.accessToken}`,
                   'Content-Type': 'application/json',
                   'Accept': 'application/vnd.github.v3+json'
                 }
@@ -576,7 +583,7 @@ app.get('/api/user/activity', async (req, res) => {
         // Get user info
         const userResponse = await axios.get('https://api.github.com/user', {
             headers: {
-                Authorization: `token ${decoded.accessToken}`,
+                Authorization: `Bearer ${decoded.accessToken}`,
                 Accept: 'application/vnd.github.v3+json'
             }
         });
@@ -640,7 +647,7 @@ app.get('/api/user/activity', async (req, res) => {
                         page: page
                     },
                     headers: {
-                        Authorization: `token ${decoded.accessToken}`,
+                        Authorization: `Bearer ${decoded.accessToken}`,
                         Accept: 'application/vnd.github.v3+json'
                     }
                 });
@@ -731,7 +738,7 @@ app.get('/api/repos/:owner/:repo', async (req, res) => {
             // Get repository details from GitHub API
             const response = await axios.get(`https://api.github.com/repos/${owner}/${repo}`, {
                 headers: {
-                    Authorization: `token ${decoded.accessToken}`,
+                    Authorization: `Bearer ${decoded.accessToken}`,
                     Accept: 'application/vnd.github.v3+json'
                 }
             });
@@ -779,7 +786,7 @@ app.get('/api/repos/:owner/:repo/commits', async (req, res) => {
                     per_page: 10 // Limit to 10 most recent commits
                 },
                 headers: {
-                    Authorization: `token ${decoded.accessToken}`,
+                    Authorization: `Bearer ${decoded.accessToken}`,
                     Accept: 'application/vnd.github.v3+json'
                 }
             });
@@ -828,7 +835,7 @@ app.get('/api/repos/:owner/:repo/pulls', async (req, res) => {
                     per_page: 20
                 },
                 headers: {
-                    Authorization: `token ${decoded.accessToken}`,
+                    Authorization: `Bearer ${decoded.accessToken}`,
                     Accept: 'application/vnd.github.v3+json'
                 }
             });
@@ -877,7 +884,7 @@ app.get('/api/repos/:owner/:repo/issues', async (req, res) => {
                     per_page: 20
                 },
                 headers: {
-                    Authorization: `token ${decoded.accessToken}`,
+                    Authorization: `Bearer ${decoded.accessToken}`,
                     Accept: 'application/vnd.github.v3+json'
                 }
             });
@@ -925,7 +932,7 @@ app.get('/api/repos/:owner/:repo/branches', async (req, res) => {
                     per_page: 100
                 },
                 headers: {
-                    Authorization: `token ${decoded.accessToken}`,
+                    Authorization: `Bearer ${decoded.accessToken}`,
                     Accept: 'application/vnd.github.v3+json'
                 }
             });
@@ -977,7 +984,7 @@ app.post('/api/repos/create', async (req, res) => {
             license_template: license === 'none' ? null : license
         }, {
             headers: {
-                Authorization: `token ${decoded.accessToken}`,
+                Authorization: `Bearer ${decoded.accessToken}`,
                 Accept: 'application/vnd.github.v3+json'
             }
         });
@@ -1017,7 +1024,7 @@ app.post('/api/user/stats', async (req, res) => {
         console.log('Fetching user data from GitHub API');
         const userResponse = await axios.get('https://api.github.com/user', {
             headers: {
-                Authorization: `token ${decoded.accessToken}`,
+                Authorization: `Bearer ${decoded.accessToken}`,
                 Accept: 'application/vnd.github.v3+json'
             }
         });
@@ -1101,7 +1108,7 @@ app.post('/api/leaderboard/refresh', async (req, res) => {
         // Get user data from GitHub API
         const userResponse = await axios.get('https://api.github.com/user', {
             headers: {
-                Authorization: `token ${decoded.accessToken}`,
+                Authorization: `Bearer ${decoded.accessToken}`,
                 Accept: 'application/vnd.github.v3+json'
             }
         });
@@ -1147,7 +1154,7 @@ app.get('/api/user/dashboard', async (req, res) => {
         // Get user data
         const userResponse = await axios.get('https://api.github.com/user', {
             headers: {
-                Authorization: `token ${decoded.accessToken}`,
+                Authorization: `Bearer ${decoded.accessToken}`,
                 Accept: 'application/vnd.github.v3+json'
             }
         });

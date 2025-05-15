@@ -39,7 +39,7 @@ const LeaderboardPage = () => {
       
       const response = await axios.get(`http://localhost:5000/api/leaderboard?category=${category}`, {
         headers: {
-          Authorization: `token ${localStorage.getItem('token')}`
+          Authorization: `Bearer ${localStorage.getItem('token')}`
         }
       });
       
@@ -100,7 +100,7 @@ const LeaderboardPage = () => {
         console.log('Updating user stats in MongoDB');
         await axios.post('http://localhost:5000/api/user/stats', {}, {
           headers: { 
-            Authorization: `token ${token}` 
+            Authorization: `Bearer ${token}` 
           }
         });
         
@@ -108,7 +108,7 @@ const LeaderboardPage = () => {
         console.log(`Fetching position for user: ${userData.login}`);
         const response = await axios.get(`http://localhost:5000/api/leaderboard/position/${userData.login}?category=${category}`, {
           headers: { 
-            Authorization: `token ${token}` 
+            Authorization: `Bearer ${token}` 
           }
         });
         
@@ -137,7 +137,7 @@ const LeaderboardPage = () => {
       // Trigger a refresh of the user stats
       const refreshResponse = await axios.post('http://localhost:5000/api/leaderboard/refresh', {}, {
         headers: { 
-          Authorization: `token ${token}` 
+          Authorization: `Bearer ${token}` 
         }
       });
       
