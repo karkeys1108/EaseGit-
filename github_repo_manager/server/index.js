@@ -94,7 +94,15 @@ try {
   };
 }
 
-app.use(cors());
+app.use(cors({
+  origin: [
+    'http://localhost:5000',
+    'http://localhost:5173', 
+    // 'https://your-deployed-frontend-domain.com' // Replace with your actual deployed domain
+  ],
+  credentials: true
+}));
+
 app.use(express.json());
 
 // GitHub OAuth endpoints

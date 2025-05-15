@@ -30,7 +30,7 @@ function App() {
       <AuthProvider>
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
           <Navbar />
-          <main className="pt-16"> {/* Add padding top to account for fixed navbar */}
+          <main className="pt-16"> 
             <Routes>
               <Route path="/" element={<Welcome />} />
               <Route path="/auth/github/callback" element={<GitHubCallback />} />

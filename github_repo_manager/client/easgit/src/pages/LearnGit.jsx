@@ -292,34 +292,6 @@ const CommandTerminal = ({ command, explanation }) => {
   );
 };
 
-const ModuleCard = ({ module, isActive, onClick }) => {
-  const { isDark } = useTheme();
-  
-  return (
-    <div
-      onClick={onClick}
-      className={`p-4 rounded-lg border cursor-pointer transition-all ${
-        isActive
-          ? isDark
-            ? 'bg-gray-800 border-blue-500'
-            : 'bg-white border-blue-500 shadow-sm'
-          : isDark
-            ? 'bg-gray-800/50 border-gray-700 hover:border-gray-600'
-            : 'bg-white border-gray-200 hover:border-gray-600 shadow-sm'
-      }`}
-    >
-      <div className="flex items-center justify-between">
-        <h4 className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-          {module.title}
-        </h4>
-        {isActive && (
-          <Check className={`w-4 h-4 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />
-        )}
-      </div>
-    </div>
-  );
-};
-
 const LearnGitHub = () => {
   const { isDark } = useTheme();
   const [currentLesson, setCurrentLesson] = useState(lessons[0]);

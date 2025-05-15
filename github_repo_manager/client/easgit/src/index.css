@@ -34,7 +34,7 @@
     animation-delay: 4s;
   }
   
-  /* Gradient animations for premium elements */
+  
   @keyframes gradient-x {
     0% {
       background-position: 0% 50%;

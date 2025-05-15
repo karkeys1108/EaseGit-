@@ -21,15 +21,25 @@ export const AuthProvider = ({ children }) => {
 
     const login = async (code) => {
         try {
+            console.log('Making API request to:', `${API_BASE_URL}/auth/github/callback`);
+            console.log('With code:', code.substring(0, 10) + '...');
+            
             const response = await axios.post(`${API_BASE_URL}/auth/github/callback`, { code });
+            console.log('API response received:', response.status);
+            
             const { token, user } = response.data;
+            console.log('User authenticated:', user?.login);
             
             localStorage.setItem('token', token);
             localStorage.setItem('user', JSON.stringify(user));
             setUser(user);
             return true;
         } catch (error) {
-            console.error('Login error:', error);
+            console.error('Login error details:', {
+                message: error.message,
+                response: error.response?.data,
+                status: error.response?.status
+            });
             return false;
         }
     };

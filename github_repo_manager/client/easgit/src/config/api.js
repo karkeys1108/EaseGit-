@@ -4,11 +4,11 @@ const isDevelopment = window.location.hostname === 'localhost' || window.locatio
 // Base URL for API requests
 export const API_BASE_URL = isDevelopment 
   ? 'http://localhost:5000/api' 
-  : 'https://easegit-a-git-repo-manager.onrender.com/api';
+  : 'http://localhost:5000/api'; // Use your local backend even when frontend is deployed
 
 // Auth header format
 export const getAuthHeader = (token) => {
   return {
-    Authorization: `Bearer ${token}`
+    Authorization: `token ${token}`
   };
 };

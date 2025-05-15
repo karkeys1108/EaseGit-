@@ -10,14 +10,20 @@ const GitHubCallback = () => {
   useEffect(() => {
     const handleCallback = async () => {
       const code = searchParams.get('code');
+      console.log('GitHub callback received, code exists:', !!code);
       
       if (code) {
         try {
+          console.log('Attempting to login with code');
           const success = await login(code);
+          console.log('Login result:', success);
+          
           if (success) {
+            console.log('Login successful, navigating to dashboard');
             navigate('/dashboard');
           } else {
             // Handle login failure
+            console.log('Login failed, navigating to home');
             navigate('/', { state: { error: 'Authentication failed' } });
           }
         } catch (error) {
@@ -25,6 +31,7 @@ const GitHubCallback = () => {
           navigate('/', { state: { error: 'Authentication failed' } });
         }
       } else {
+        console.log('No code found, navigating to home');
         navigate('/');
       }
     };

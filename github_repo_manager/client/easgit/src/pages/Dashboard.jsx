@@ -47,8 +47,6 @@ const Dashboard = () => {
         userData = userResponse.data;
         console.log('User data fetched successfully:', userData.login);
         
-        // Set GitHub Stats URL
-        setGithubStats(`https://github-readme-stats.vercel.app/api?username=${userData.login}&show_icons=true&count_private=true&hide=prs&theme=radical`);
         
         // Store user stats in MongoDB for leaderboard
         try {
@@ -145,14 +143,13 @@ const Dashboard = () => {
               hasMorePages = false;
             }
           } else {
-            // Old format (direct array)
             if (Array.isArray(reposResponse.data)) {
               allRepos = [...allRepos, ...reposResponse.data];
               console.log(`Fetched ${reposResponse.data.length} repositories (old format)`);
             } else {
               console.warn('Received invalid repositories data (old format):', reposResponse.data);
             }
-            hasMorePages = false; // No pagination info, so stop after first page
+            hasMorePages = false;
           }
           
           console.log(`Total repositories fetched so far: ${allRepos.length}`);
@@ -170,14 +167,13 @@ const Dashboard = () => {
         console.log(`Finished fetching repositories. Total count: ${allRepos.length}`);
       } catch (error) {
         console.error('Error fetching repositories:', error);
-        // Don't generate mock repositories, just use an empty array
         console.log('Using empty repository list due to error');
       }
       
-      // Sort repositories by stars (descending)
+
       const sortedRepos = [...allRepos].sort((a, b) => b.stargazers_count - a.stargazers_count);
       
-      // Calculate stats
+    
       const totalStars = sortedRepos.reduce((sum, repo) => sum + (repo.stargazers_count || 0), 0);
       const totalForks = sortedRepos.reduce((sum, repo) => sum + (repo.forks_count || 0), 0);
       const totalWatchers = sortedRepos.reduce((sum, repo) => sum + (repo.watchers_count || 0), 0);
