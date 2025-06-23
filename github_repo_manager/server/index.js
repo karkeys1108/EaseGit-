@@ -7,7 +7,11 @@ const mongoose = require('mongoose');
 
 const app = express();
 
-// Connect to MongoDB
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+
+
 console.log('Attempting to connect to MongoDB...');
 console.log(`MongoDB URI: ${process.env.MONGODB_URI || 'mongodb://localhost:27017/easegit'}`);
 
@@ -98,14 +102,13 @@ app.use(cors({
   origin: [
     'http://localhost:5000',
     'http://localhost:5173', 
-    // 'https://your-deployed-frontend-domain.com' // Replace with your actual deployed domain
+    //deployment url in cloud
   ],
   credentials: true
 }));
 
 app.use(express.json());
 
-// GitHub OAuth endpoints
 app.get('/api/auth/github', (req, res) => {
     const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${process.env.GITHUB_CLIENT_ID}&scope=repo user`;
     res.json({ url: githubAuthUrl });
@@ -120,6 +123,8 @@ app.get('/api/auth/github/callback', (req, res) => {
 
 app.post('/api/auth/github/callback', async (req, res) => {
     const { code } = req.body;
+    console.log('POST /api/auth/github/callback hit');
+    console.log('Request body:', req.body);
     
     try {
         // Exchange code for access token
